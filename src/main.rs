@@ -43,7 +43,8 @@ fn main() {
     println!();
     println!("//////// SIGN ////////");
     Test_Sign();
-    
+    Test_CMS_sign();
+    Test_PKCS7_sign();
     println!();
     println!("//////// Cert ////////");
     Test_Cert_and_TLS();

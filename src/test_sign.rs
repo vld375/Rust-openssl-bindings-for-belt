@@ -4,9 +4,11 @@ use binds::Message_digest;
 use openssl::hash::MessageDigest;
 use openssl::pkey::{Id, PKey};
 use openssl::sign::{Signer, Verifier};
-use openssl::stack::StackRef;
+use openssl::stack::{Stack, StackRef};
+use openssl::x509::store::{X509Store, X509StoreBuilder, X509StoreRef};
 use std::fs::File;
 use std::io::{Read, Write};
+use std::ptr::null;
 use openssl::cms::{CmsContentInfo, CMSOptions};
 use crate::pkey::genPkey;
 use crate::pkey::GetPublicKey;
@@ -16,7 +18,8 @@ use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslStream, SslVersi
 use openssl::x509::extension::{BasicConstraints, ExtendedKeyUsage, KeyUsage};
 use openssl::x509::{X509Builder, X509NameBuilder, X509};
 use std::fs;
-use pdf_signing;
+use openssl::pkcs7::{Pkcs7Flags, Pkcs7Signed};
+use openssl::pkcs7::Pkcs7;
 
 pub fn Test_Sign() {
     // Генарация пары ключей
@@ -69,11 +72,16 @@ pub fn Test_CMS_sign(){
     let mut subject_nameBuilder = X509NameBuilder::new().unwrap();
     subject_nameBuilder.append_entry_by_text("CN", "127.0.0.1");
     let subject_name = subject_nameBuilder.build();
+
+    let mut issuer_nameBuilder = X509NameBuilder::new().unwrap();
+    issuer_nameBuilder.append_entry_by_text("CN", "127.0.0.1");
+    let issuer_name = issuer_nameBuilder.build();
     // Создать новый объект X509Builder для создания запроса на сертификат
 
     let mut builder = X509Builder::new().unwrap();
     // Установить имя субъекта запроса на сертификат
     builder.set_subject_name(&subject_name).unwrap();
+    builder.set_issuer_name(&issuer_name).unwrap();
     // Установить открытый ключ запроса на сертификат
     builder.set_pubkey(&pkey).unwrap();
     builder
@@ -129,4 +137,29 @@ pub fn Test_CMS_sign(){
 
     fs::write("signature.pem", cms.to_pem().unwrap()).unwrap();
 
+}
+
+pub fn Test_PKCS7_sign(){
+    let certificate_contents = fs::read("cert.pem").unwrap();
+    let private_key_contents = fs::read("cms_private.pem").unwrap();
+    let data = fs::read("dummy.pdf").unwrap();
+
+    let signcert = X509::from_pem(&certificate_contents).unwrap();
+    let mut stack: Stack<X509> = Stack::new().unwrap();
+    stack.push(signcert.clone());
+    let pkey = PKey::private_key_from_pem(&private_key_contents).unwrap();
+    let sign = Pkcs7::sign(&signcert, &pkey, stack.as_ref(), &data, Pkcs7Flags::DETACHED |Pkcs7Flags::BINARY | Pkcs7Flags::NOVERIFY).unwrap();
+    let mut file = File::create("signature.p7s").unwrap();
+    file.write_all(&sign.to_pem().unwrap());
+    let sign = fs::read("signature.p7s").unwrap();
+    let mut store = X509StoreBuilder::new().unwrap();
+    store.add_cert(signcert).unwrap();
+
+    let Ref = store.build();
+    let sign =  Pkcs7::from_pem(&sign).unwrap();   
+    let mut output: Vec<u8> = Vec::new(); 
+    // Вернет ошибку если не будет пройдена проверка 
+    let result = sign.verify(stack.as_ref(), Ref.as_ref(), Some(&data), Some(output.as_mut()), Pkcs7Flags::DETACHED |Pkcs7Flags::BINARY | Pkcs7Flags::NOVERIFY).unwrap();
+
+    //println!("pkcs7 sign: {}");
 }
