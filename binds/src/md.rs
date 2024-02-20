@@ -1,7 +1,7 @@
 use openssl::md_ctx::MdCtx;
 use openssl::md::Md;
 use std::error::Error;
-use crate::evp_binds::Belt;
+use crate::evp_binds::BeltMD;
 
 pub fn belt_hash(input_str: &[u8]) -> Result<[u8;32], Box<dyn Error>> {
     let mut digest = [0;32];
