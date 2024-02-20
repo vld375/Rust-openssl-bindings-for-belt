@@ -1,0 +1,17 @@
+[package]
+name = "belt"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+openssl-sys = "0.9"
+openssl-macros = "0.1.1"
+openssl = "0.10.63"
+foreign-types = "0.3.1"
+hex = "0.4.3"
+binds = { path = "binds" }
+pdf_signing = "0.1.0"
+[build-dependencies]
+vcpkg = "0.2.15"    
