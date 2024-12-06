@@ -1,25 +1,25 @@
-use crate::pkey::*;
-use crate::utils::printHexString;
-use binds::Message_digest;
-use openssl::hash::MessageDigest;
-use openssl::pkey::{Id, PKey};
-use openssl::sign::{Signer, Verifier};
-use openssl::stack::{Stack, StackRef};
-use openssl::x509::store::{X509Store, X509StoreBuilder, X509StoreRef};
-use std::fs::File;
-use std::io::{Read, Write};
-use std::ptr::null;
-use openssl::cms::{CmsContentInfo, CMSOptions};
 use crate::pkey::genPkey;
 use crate::pkey::GetPublicKey;
 use crate::pkey::WriteKeys;
+use crate::pkey::*;
+use crate::utils::printHexString;
+use binds::Message_digest;
 use openssl::asn1::Asn1Time;
+use openssl::cms::{CMSOptions, CmsContentInfo};
+use openssl::hash::MessageDigest;
+use openssl::pkcs7::Pkcs7;
+use openssl::pkcs7::{Pkcs7Flags, Pkcs7Signed};
+use openssl::pkey::{Id, PKey};
+use openssl::sign::{Signer, Verifier};
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslStream, SslVersion};
+use openssl::stack::{Stack, StackRef};
 use openssl::x509::extension::{BasicConstraints, ExtendedKeyUsage, KeyUsage};
+use openssl::x509::store::{X509Store, X509StoreBuilder, X509StoreRef};
 use openssl::x509::{X509Builder, X509NameBuilder, X509};
 use std::fs;
-use openssl::pkcs7::{Pkcs7Flags, Pkcs7Signed};
-use openssl::pkcs7::Pkcs7;
+use std::fs::File;
+use std::io::{Read, Write};
+use std::ptr::null;
 
 pub fn Test_Sign() {
     // Генарация пары ключей
@@ -62,8 +62,7 @@ pub fn Test_Sign() {
     println!("Verify Result: {}", verifier.verify(&signature).unwrap());
 }
 
-pub fn Test_CMS_sign(){
-
+pub fn Test_CMS_sign() {
     //Генарация пары ключей
     let pkey = genPkey().unwrap();
     WriteKeys(&pkey, "cms_public.pem", "cms_private.pem");
@@ -105,12 +104,12 @@ pub fn Test_CMS_sign(){
     // Добавить расширение BasicConstraints в запрос на сертификат
     let basic_constraints = BasicConstraints::new().ca().pathlen(0).build().unwrap();
     builder.append_extension(basic_constraints).unwrap();
-    
+
     // Подписать запрос на сертификат с использованием закрытого ключа
     builder.sign(&pkey, MessageDigest::belt_hash()).unwrap();
 
     let cert = builder.build();
-    
+
     // Сохранить сертификат в файл
     let mut file = std::fs::File::create("cert.pem").unwrap();
     file.write_all(&cert.to_pem().unwrap()).unwrap();
@@ -122,24 +121,15 @@ pub fn Test_CMS_sign(){
 
     let signcert = X509::from_pem(&certificate_contents).unwrap();
     let pkey = PKey::private_key_from_pem(&private_key_contents).unwrap();
-    
+
     let flags = CMSOptions::DETACHED | CMSOptions::BINARY;
 
-    
-    let cms = CmsContentInfo::sign(
-      Some(&signcert),
-      Some(&pkey),
-      None, 
-      Some(&data),
-      flags
-    ).unwrap();
-    
+    let cms = CmsContentInfo::sign(Some(&signcert), Some(&pkey), None, Some(&data), flags).unwrap();
 
     fs::write("signature.pem", cms.to_pem().unwrap()).unwrap();
-
 }
 
-pub fn Test_PKCS7_sign(){
+pub fn Test_PKCS7_sign() {
     let certificate_contents = fs::read("cert.pem").unwrap();
     let private_key_contents = fs::read("cms_private.pem").unwrap();
     let data = fs::read("dummy.pdf").unwrap();
@@ -148,7 +138,14 @@ pub fn Test_PKCS7_sign(){
     let mut stack: Stack<X509> = Stack::new().unwrap();
     stack.push(signcert.clone());
     let pkey = PKey::private_key_from_pem(&private_key_contents).unwrap();
-    let sign = Pkcs7::sign(&signcert, &pkey, stack.as_ref(), &data, Pkcs7Flags::DETACHED |Pkcs7Flags::BINARY | Pkcs7Flags::NOVERIFY).unwrap();
+    let sign = Pkcs7::sign(
+        &signcert,
+        &pkey,
+        stack.as_ref(),
+        &data,
+        Pkcs7Flags::DETACHED | Pkcs7Flags::BINARY | Pkcs7Flags::NOVERIFY,
+    )
+    .unwrap();
     let mut file = File::create("signature.p7s").unwrap();
     file.write_all(&sign.to_pem().unwrap());
     let sign = fs::read("signature.p7s").unwrap();
@@ -156,10 +153,18 @@ pub fn Test_PKCS7_sign(){
     store.add_cert(signcert).unwrap();
 
     let Ref = store.build();
-    let sign =  Pkcs7::from_pem(&sign).unwrap();   
-    let mut output: Vec<u8> = Vec::new(); 
-    // Вернет ошибку если не будет пройдена проверка 
-    let result = sign.verify(stack.as_ref(), Ref.as_ref(), Some(&data), Some(output.as_mut()), Pkcs7Flags::DETACHED |Pkcs7Flags::BINARY | Pkcs7Flags::NOVERIFY).unwrap();
+    let sign = Pkcs7::from_pem(&sign).unwrap();
+    let mut output: Vec<u8> = Vec::new();
+    // Вернет ошибку если не будет пройдена проверка
+    let result = sign
+        .verify(
+            stack.as_ref(),
+            Ref.as_ref(),
+            Some(&data),
+            Some(output.as_mut()),
+            Pkcs7Flags::DETACHED | Pkcs7Flags::BINARY | Pkcs7Flags::NOVERIFY,
+        )
+        .unwrap();
 
     //println!("pkcs7 sign: {}");
 }

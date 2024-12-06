@@ -1,9 +1,9 @@
 use openssl::pkey::{Id, PKey, Private, Public};
 use openssl::pkey_ctx::PkeyCtx;
 use std::error::Error;
+use std::fmt;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::fmt;
 
 use crate::utils::printHexString;
 
@@ -16,7 +16,7 @@ pub fn genPkey() -> Result<PKey<Private>, Box<dyn Error>> {
 
 pub fn WriteKeys(pkey: &PKey<Private>, public_path: &str, private_path: &str) {
     let mut public_key_file = File::create(public_path).unwrap();
-    
+
     public_key_file
         .write_all(&pkey.public_key_to_pem().unwrap())
         .unwrap();

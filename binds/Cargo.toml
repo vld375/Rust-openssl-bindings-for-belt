@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-foreign-types = "0.3.1"
-openssl-sys = "0.9"
-openssl = "0.10.63"
+foreign-types-shared = "0.3.1"
+foreign-types = "0.3.2"
+openssl-sys = "0.9.104"
+openssl = "0.10.68"

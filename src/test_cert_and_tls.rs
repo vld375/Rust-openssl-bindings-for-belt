@@ -63,17 +63,15 @@ fn CreateCert() {
     // Добавить расширение BasicConstraints в запрос на сертификат
     let basic_constraints = BasicConstraints::new().ca().pathlen(0).build().unwrap();
     builder.append_extension(basic_constraints).unwrap();
-    
+
     // Подписать запрос на сертификат с использованием закрытого ключа
     builder.sign(&pkey, MessageDigest::belt_hash()).unwrap();
 
     let cert = builder.build();
-    
 
     // Сохранить сертификат в файл
     let mut file = std::fs::File::create("server.crt").unwrap();
     file.write_all(&cert.to_pem().unwrap()).unwrap();
-  
 }
 
 fn CheckCert() {
@@ -88,7 +86,7 @@ fn CheckCert() {
         "Check certificate with public key: {}",
         cert.verify(&public_key).unwrap()
     );
-    println!("{:?}",cert)
+    println!("{:?}", cert)
 }
 
 fn CreateTCPServer() {

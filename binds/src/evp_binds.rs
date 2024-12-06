@@ -4,6 +4,8 @@ use openssl::md::MdRef;
 use openssl::md::Md;
 use openssl::cipher::CipherRef;
 use foreign_types::ForeignTypeRef;
+
+//use foreign_types_shared::ForeignTypeRef;
 use openssl::hash::MessageDigest;
 
 pub trait BeltMD {
